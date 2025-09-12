@@ -1,0 +1,97 @@
+version: "3.9"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+
+  postgres_command:
+    image: postgres:16
+    container_name: postgres_command
+    environment:
+      - POSTGRES_USER=command
+      - POSTGRES_PASSWORD=command
+      - POSTGRES_DB=command_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - command_db_data:/var/lib/postgresql/data
+
+  postgres_query:
+    image: postgres:16
+    container_name: postgres_query
+    environment:
+      - POSTGRES_USER=query
+      - POSTGRES_PASSWORD=query
+      - POSTGRES_DB=query_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - query_db_data:/var/lib/postgresql/data
+
+  race_application_command_service:
+    build:
+      context: ./services/race-application-command-service
+    container_name: race_application_command_service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
+      - DB_HOST=postgres_command
+      - DB_PORT=5432
+      - DB_NAME=command_db
+      - DB_USERNAME=command
+      - DB_PASSWORD=command
+      - JWT_SECRET=dev-shared-secret-please-change-this-is-a-very-long-secret-key-for-jwt-signing-that-is-at-least-256-bits-long
+    depends_on:
+      - rabbitmq
+      - postgres_command
+    ports:
+      - "8081:8080"
+
+  race_application_query_service:
+    build:
+      context: ./services/race-application-query-service
+    container_name: race_application_query_service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
+      - DB_HOST=postgres_query
+      - DB_PORT=5432
+      - DB_NAME=query_db
+      - DB_USERNAME=query
+      - DB_PASSWORD=query
+      - JWT_SECRET=dev-shared-secret-please-change-this-is-a-very-long-secret-key-for-jwt-signing-that-is-at-least-256-bits-long
+    depends_on:
+      - rabbitmq
+      - postgres_query
+    ports:
+      - "8082:8080"
+
+  client:
+    build:
+      context: ./client
+    container_name: race_application_client
+    environment:
+      - VITE_API_QUERY_URL=http://localhost:8082
+      - VITE_API_COMMAND_URL=http://localhost:8081
+    depends_on:
+      - race_application_query_service
+      - race_application_command_service
+    ports:
+      - "5173:80"
+
+volumes:
+  command_db_data:
+  query_db_data: 

@@ -1,0 +1,21 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: race-application-command-service
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+app:
+  rabbit:
+    exchange: events.exchange
+    routing:
+      race: race.events
+      application: application.events
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info 
