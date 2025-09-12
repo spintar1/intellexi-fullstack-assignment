@@ -30,7 +30,7 @@ This application allows:
 
 ### 1. Clone and Start
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/spintar1/intellexi-fullstack-assignment.git
 cd intellexi-fullstack-assignment
 docker compose up -d
 ```
