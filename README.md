@@ -18,7 +18,7 @@ This application allows:
 - **Client Application** (Port 5173): React frontend with role-based UI
 
 ### Infrastructure
-- **PostgreSQL**: Two separate databases (command & query)
+- **PostgreSQL**: Single query database (command service is stateless)
 - **RabbitMQ**: Message broker for event-driven communication
 - **Docker Compose**: Complete development environment
 
@@ -32,7 +32,23 @@ This application allows:
 ```bash
 git clone https://github.com/spintar1/intellexi-fullstack-assignment.git
 cd intellexi-fullstack-assignment
+
+# Stop any running containers
+docker compose down
+
+# Build all services (recommended after first clone)
+docker compose build --no-cache
+
+# Start all services
 docker compose up -d
+
+# Check status
+docker compose ps
+
+# Open the application
+start http://localhost:5173  # Windows
+# or
+open http://localhost:5173   # macOS/Linux
 ```
 
 ### 2. Access the Application
@@ -76,25 +92,25 @@ docker compose down && docker compose build && docker compose up -d
 
 ### Connection Details
 
-#### Command Database
-- **Host**: localhost
-- **Port**: 5433
-- **Database**: command_db
-- **Username**: command
-- **Password**: command
-
-#### Query Database
+**Single PostgreSQL Database (Query Database):**
 - **Host**: localhost
 - **Port**: 5434
 - **Database**: query_db
 - **Username**: query
 - **Password**: query
 
+**Note**: The Command Service is stateless and doesn't use a database - it only publishes events to RabbitMQ.
+
 ### Using pgAdmin
 1. Install pgAdmin
-2. Create server group: "Trail Race Databases"
-3. Add both databases with the connection details above
-4. View tables: `races` and `applications`
+2. Register Server:
+   - **Name**: Trail Race Query DB
+   - **Host**: localhost
+   - **Port**: 5434
+   - **Database**: query_db
+   - **Username**: query
+   - **Password**: query
+3. View tables: `races` and `applications`
 
 ## 🔧 API Endpoints
 
@@ -280,9 +296,10 @@ docker compose logs race_application_query_service
 ```
 
 ### Database Connection Issues
-- Ensure PostgreSQL containers are running
-- Check port mappings (5433 for command, 5434 for query)
-- Verify credentials match docker-compose.yml
+- Ensure PostgreSQL container is running: `docker compose ps`
+- Check port mapping: 5434 for query database
+- Verify credentials: query/query for query_db
+- Command service is stateless (no database connection)
 
 ### JWT Token Issues
 - Tokens expire after 8 hours

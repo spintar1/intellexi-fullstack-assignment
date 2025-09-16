@@ -11,18 +11,6 @@ services:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
 
-  postgres_command:
-    image: postgres:16
-    container_name: postgres_command
-    environment:
-      - POSTGRES_USER=command
-      - POSTGRES_PASSWORD=command
-      - POSTGRES_DB=command_db
-    ports:
-      - "5433:5432"
-    volumes:
-      - command_db_data:/var/lib/postgresql/data
-
   postgres_query:
     image: postgres:16
     container_name: postgres_query
@@ -45,15 +33,9 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_USERNAME=guest
       - RABBITMQ_PASSWORD=guest
-      - DB_HOST=postgres_command
-      - DB_PORT=5432
-      - DB_NAME=command_db
-      - DB_USERNAME=command
-      - DB_PASSWORD=command
       - JWT_SECRET=dev-shared-secret-please-change-this-is-a-very-long-secret-key-for-jwt-signing-that-is-at-least-256-bits-long
     depends_on:
       - rabbitmq
-      - postgres_command
     ports:
       - "8081:8080"
 
@@ -93,5 +75,4 @@ services:
       - "5173:80"
 
 volumes:
-  command_db_data:
   query_db_data: 
