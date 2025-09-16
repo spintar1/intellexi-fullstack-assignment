@@ -102,7 +102,7 @@ export default function App() {
         <main className="app-main">
           <Routes>
             <Route path="/" element={<Races apiQuery={API_QUERY} apiCommand={API_COMMAND} token={token} />} />
-            <Route path="/applications" element={<Applications apiQuery={API_QUERY} token={token} />} />
+            <Route path="/applications" element={<Applications apiQuery={API_QUERY} apiCommand={API_COMMAND} token={token} />} />
             <Route path="/admin/races" element={<AdminRaces apiQuery={API_QUERY} apiCommand={API_COMMAND} token={token} />} />
           </Routes>
         </main>

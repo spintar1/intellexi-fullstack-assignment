@@ -42,15 +42,7 @@ export function RaceProvider({ children, apiQuery, token }: { children: ReactNod
     }
   };
 
-  const refreshRacesWithRetry = async (maxRetries = 3, delay = 1000) => {
-    for (let i = 0; i < maxRetries; i++) {
-      await refreshRaces();
-      if (i < maxRetries - 1) {
-        // Wait before retry (gives time for event processing)
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  };
+  // Simple refresh without retries - optimistic updates handle consistency
 
   const addRaceOptimistically = (race: Race) => {
     setRaces(prevRaces => {
@@ -83,7 +75,7 @@ export function RaceProvider({ children, apiQuery, token }: { children: ReactNod
       races, 
       loading, 
       error, 
-      refreshRaces: refreshRacesWithRetry,
+      refreshRaces,
       addRaceOptimistically,
       removeRaceOptimistically,
       updateRaceOptimistically

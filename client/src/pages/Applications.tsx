@@ -3,7 +3,7 @@ import { useRaces } from '../context/RaceContext';
 
 type Application = { id: string; firstName: string; lastName: string; club?: string; raceId: string };
 
-export default function Applications({ apiQuery, token }: { apiQuery: string; token: string | null }) {
+export default function Applications({ apiQuery, apiCommand, token }: { apiQuery: string; apiCommand: string; token: string | null }) {
   const { races, loading: racesLoading } = useRaces();
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,7 +52,7 @@ export default function Applications({ apiQuery, token }: { apiQuery: string; to
     if (!confirm('Are you sure you want to delete this application?')) return;
 
     try {
-      const response = await fetch(`${apiQuery}/api/v1/applications/${id}`, {
+      const response = await fetch(`${apiCommand}/api/v1/applications/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

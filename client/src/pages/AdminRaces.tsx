@@ -11,6 +11,7 @@ export default function AdminRaces({ apiQuery, apiCommand, token }: { apiQuery: 
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   async function createRace() {
     if (!token || !name.trim()) return;
@@ -43,8 +44,8 @@ export default function AdminRaces({ apiQuery, apiCommand, token }: { apiQuery: 
       const realRace = await res.json();
       console.log('✅ Race created successfully:', realRace);
       
-      // 5. Refresh with retry to ensure consistency (background sync)
-      setTimeout(() => refreshRaces(), 500); // Small delay for event processing
+      // Smart sync: Single background refresh to ensure consistency
+      setTimeout(() => refreshRaces(), 1000);
       
     } catch (error) {
       console.error('❌ Failed to create race:', error);
@@ -78,8 +79,8 @@ export default function AdminRaces({ apiQuery, apiCommand, token }: { apiQuery: 
       
       console.log('✅ Race updated successfully:', id, patch);
       
-      // 3. Background sync to ensure consistency
-      setTimeout(() => refreshRaces(), 500);
+      // Smart sync: Refresh only after successful operations to ensure data consistency
+      setTimeout(() => refreshRaces(), 1000);
       
     } catch (error) {
       console.error('❌ Failed to update race:', error);
@@ -103,11 +104,22 @@ export default function AdminRaces({ apiQuery, apiCommand, token }: { apiQuery: 
   }
 
   async function saveEdit(id: string) {
-    if (!editingName.trim()) return;
+    if (!editingName.trim() || isSaving) return;
+    
+    setIsSaving(true);
     console.log('Saving edit for race ID:', id, 'New name:', editingName.trim());
-    await updateRace(id, { name: editingName.trim() });
-    setEditingId(null);
-    setEditingName('');
+    
+    try {
+      await updateRace(id, { name: editingName.trim() });
+      // Success - exit editing mode
+      setEditingId(null);
+      setEditingName('');
+    } catch (error) {
+      // Error handling is already done in updateRace
+      console.error('Failed to save edit:', error);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   async function deleteRace(id: string) {
@@ -132,8 +144,8 @@ export default function AdminRaces({ apiQuery, apiCommand, token }: { apiQuery: 
       
       console.log('✅ Race deleted successfully:', id);
       
-      // 3. Background sync to ensure consistency
-      setTimeout(() => refreshRaces(), 500);
+      // Smart sync: Single background refresh to ensure consistency  
+      setTimeout(() => refreshRaces(), 1000);
       
     } catch (error) {
       console.error('❌ Failed to delete race:', error);
@@ -242,7 +254,7 @@ export default function AdminRaces({ apiQuery, apiCommand, token }: { apiQuery: 
                         <div className="race-info">
                           <div className="race-name">
                             {r.name}
-                            {isTemporary && (
+                            {(isTemporary || (editingId === r.id && isSaving)) && (
                               <span className="status-badge status-saving">Saving...</span>
                             )}
                           </div>
@@ -256,9 +268,9 @@ export default function AdminRaces({ apiQuery, apiCommand, token }: { apiQuery: 
                             <button 
                               className="btn btn-success btn-small" 
                               onClick={() => saveEdit(r.id)} 
-                              disabled={!editingName.trim()}
+                              disabled={!editingName.trim() || isSaving}
                             >
-                              ✓ Save
+                              {isSaving ? '⏳ Saving...' : '✓ Save'}
                             </button>
                             <button 
                               className="btn btn-ghost btn-small" 
