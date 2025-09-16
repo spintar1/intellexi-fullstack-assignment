@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:debug": "vite --config vite.config.dev.ts --mode development",
     "build": "tsc -b && vite build",
-    "preview": "vite preview --host"
+    "build:debug": "tsc -b && vite build --mode development",
+    "preview": "vite preview --host",
+    "type-check": "tsc --noEmit",
+    "debug": "npm run dev:debug"
   },
   "dependencies": {
     "jwt-decode": "^4.0.0",
@@ -19,6 +23,7 @@
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.7.0",
+    "terser": "^5.44.0",
     "typescript": "^5.5.4",
     "vite": "^5.4.20"
   }

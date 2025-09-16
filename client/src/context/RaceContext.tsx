@@ -7,6 +7,9 @@ interface RaceContextType {
   loading: boolean;
   error: string | null;
   refreshRaces: () => Promise<void>;
+  addRaceOptimistically: (race: Race) => void;
+  removeRaceOptimistically: (raceId: string) => void;
+  updateRaceOptimistically: (raceId: string, updates: Partial<Race>) => void;
 }
 
 const RaceContext = createContext<RaceContextType | undefined>(undefined);
@@ -16,7 +19,7 @@ export function RaceProvider({ children, apiQuery, token }: { children: ReactNod
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshRaces = async () => {
+  const refreshRaces = async (retryCount = 0) => {
     if (!token) {
       setRaces([]);
       setLoading(false);
@@ -30,7 +33,8 @@ export function RaceProvider({ children, apiQuery, token }: { children: ReactNod
         headers: { Authorization: `Bearer ${token}` } 
       });
       if (!res.ok) throw new Error(`${res.status}`);
-      setRaces(await res.json());
+      const fetchedRaces = await res.json();
+      setRaces(fetchedRaces.sort((a: Race, b: Race) => a.name.localeCompare(b.name)));
     } catch (e) { 
       setError('Failed to load races'); 
     } finally { 
@@ -38,12 +42,52 @@ export function RaceProvider({ children, apiQuery, token }: { children: ReactNod
     }
   };
 
+  const refreshRacesWithRetry = async (maxRetries = 3, delay = 1000) => {
+    for (let i = 0; i < maxRetries; i++) {
+      await refreshRaces();
+      if (i < maxRetries - 1) {
+        // Wait before retry (gives time for event processing)
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  };
+
+  const addRaceOptimistically = (race: Race) => {
+    setRaces(prevRaces => {
+      // Avoid duplicates
+      if (prevRaces.find(r => r.id === race.id)) {
+        return prevRaces;
+      }
+      const newRaces = [...prevRaces, race];
+      return newRaces.sort((a, b) => a.name.localeCompare(b.name));
+    });
+  };
+
+  const removeRaceOptimistically = (raceId: string) => {
+    setRaces(prevRaces => prevRaces.filter(r => r.id !== raceId));
+  };
+
+  const updateRaceOptimistically = (raceId: string, updates: Partial<Race>) => {
+    setRaces(prevRaces => {
+      const updatedRaces = prevRaces.map(r => r.id === raceId ? { ...r, ...updates } : r);
+      return updatedRaces.sort((a, b) => a.name.localeCompare(b.name));
+    });
+  };
+
   useEffect(() => {
     refreshRaces();
   }, [token, apiQuery]);
 
   return (
-    <RaceContext.Provider value={{ races, loading, error, refreshRaces }}>
+    <RaceContext.Provider value={{ 
+      races, 
+      loading, 
+      error, 
+      refreshRaces: refreshRacesWithRetry,
+      addRaceOptimistically,
+      removeRaceOptimistically,
+      updateRaceOptimistically
+    }}>
       {children}
     </RaceContext.Provider>
   );

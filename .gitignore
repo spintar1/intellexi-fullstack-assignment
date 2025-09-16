@@ -8,11 +8,10 @@ client/build/
 services/*/target/
 services/*/build/
 
-# Environment files
+# Environment files (keep .env.development for debugging)
 .env
 .env.local
 .env.production
-.env.development
 
 # IDE files
 .vscode/
@@ -56,3 +55,20 @@ hs_err_pid*
 # Temporary files
 tmp/
 temp/
+
+# Source Maps (keep development source maps, ignore production ones)
+client/dist/**/*.map
+*.map.js
+
+# Debug files
+*.dmp
+*.dump
+*.hprof
+
+# Development debug logs
+debug.log
+debug*.log
+
+# IDE debug configurations
+.vscode/launch.json
+.idea/runConfigurations/

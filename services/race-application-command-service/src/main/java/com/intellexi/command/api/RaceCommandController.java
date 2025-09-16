@@ -53,12 +53,27 @@ public class RaceCommandController {
     @PostMapping
     @PreAuthorize("hasRole('Administrator')")
     public ResponseEntity<Map<String, Object>> create(@Valid @RequestBody CreateRaceRequest req) {
-        if (!VALID_DISTANCES.contains(req.getDistance())) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid distance"));
+        logger.info("Received race creation request - name: '{}', distance: '{}'", req.getName(), req.getDistance());
+        
+        try {
+            if (!VALID_DISTANCES.contains(req.getDistance())) {
+                logger.warn("Invalid distance rejected - '{}' not in allowed distances: {}", req.getDistance(), VALID_DISTANCES);
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid distance"));
+            }
+            
+            UUID id = UUID.randomUUID();
+            logger.debug("Generated race ID: {}", id);
+            
+            logger.info("Publishing race created event - id: {}, name: '{}', distance: '{}'", id, req.getName(), req.getDistance());
+            publisher.publishRaceEvent(new RaceEvents.RaceCreated(id, req.getName(), req.getDistance()));
+            
+            logger.info("Race created successfully - id: {}, name: '{}'", id, req.getName());
+            return ResponseEntity.created(URI.create("/api/v1/races/" + id)).body(Map.of("id", id));
+            
+        } catch (Exception e) {
+            logger.error("Failed to create race - name: '{}', distance: '{}'", req.getName(), req.getDistance(), e);
+            return ResponseEntity.internalServerError().build();
         }
-        UUID id = UUID.randomUUID();
-        publisher.publishRaceEvent(new RaceEvents.RaceCreated(id, req.getName(), req.getDistance()));
-        return ResponseEntity.created(URI.create("/api/v1/races/" + id)).body(Map.of("id", id));
     }
 
     @PatchMapping("/{id}")
@@ -67,14 +82,34 @@ public class RaceCommandController {
         // Extract ID from the URL path manually
         String path = request.getRequestURI();
         String idString = path.substring(path.lastIndexOf('/') + 1);
-        UUID id = UUID.fromString(idString);
-        String name = req.getName();
-        String distance = req.getDistance();
-        if (distance != null && !VALID_DISTANCES.contains(distance)) {
+        
+        try {
+            UUID id = UUID.fromString(idString);
+            String name = req.getName();
+            String distance = req.getDistance();
+            
+            logger.info("Received race update request - id: {}, name: '{}', distance: '{}'", id, name, distance);
+            
+            if (distance != null && !VALID_DISTANCES.contains(distance)) {
+                logger.warn("Invalid distance rejected for race update - id: {}, distance: '{}' not in allowed distances: {}", 
+                           id, distance, VALID_DISTANCES);
+                return ResponseEntity.badRequest().build();
+            }
+            
+            logger.info("Publishing race updated event - id: {}, name: '{}', distance: '{}'", id, name, distance);
+            publisher.publishRaceEvent(new RaceEvents.RaceUpdated(id, name, distance));
+            
+            logger.info("Race updated successfully - id: {}", id);
+            return ResponseEntity.ok().build();
+            
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid UUID format for race update: '{}' - path: {}", idString, path, e);
             return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            logger.error("Failed to update race - id: '{}', name: '{}', distance: '{}'", 
+                        idString, req.getName(), req.getDistance(), e);
+            return ResponseEntity.internalServerError().build();
         }
-        publisher.publishRaceEvent(new RaceEvents.RaceUpdated(id, name, distance));
-        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}")
@@ -83,14 +118,31 @@ public class RaceCommandController {
         // Extract ID from the URL path manually
         String path = request.getRequestURI();
         String idString = path.substring(path.lastIndexOf('/') + 1);
-        UUID id = UUID.fromString(idString);
         
-        logger.info("DELETE race request - ID: {}, Auth: {}", id, auth != null ? "present" : "null");
-        if (auth != null) {
-            logger.info("User: {}, Authorities: {}", auth.getPrincipal(), auth.getAuthorities());
+        try {
+            UUID id = UUID.fromString(idString);
+            String adminUser = auth != null ? String.valueOf(auth.getPrincipal()) : "unknown";
+            
+            logger.info("Received race delete request - id: {}, admin: {}", id, adminUser);
+            if (auth != null) {
+                logger.debug("Delete request authentication details - user: {}, authorities: {}", 
+                           auth.getPrincipal(), auth.getAuthorities());
+            }
+            
+            logger.info("Publishing race deleted event - id: {}, admin: {}", id, adminUser);
+            publisher.publishRaceEvent(new RaceEvents.RaceDeleted(id));
+            
+            logger.info("Race delete request processed successfully - id: {}, admin: {}", id, adminUser);
+            return ResponseEntity.noContent().build();
+            
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid UUID format for race deletion: '{}' - path: {}", idString, path, e);
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            logger.error("Failed to process race deletion - id: '{}', admin: {}", idString, 
+                        auth != null ? auth.getPrincipal() : "unknown", e);
+            return ResponseEntity.internalServerError().build();
         }
-        publisher.publishRaceEvent(new RaceEvents.RaceDeleted(id));
-        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/debug")

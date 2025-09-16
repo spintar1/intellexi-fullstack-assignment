@@ -10,7 +10,14 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "strict": true
+    "strict": true,
+    // Enable source maps for better debugging
+    "sourceMap": true,
+    "inlineSourceMap": false,
+    "inlineSources": false,
+    // Additional debugging options
+    "declaration": true,
+    "declarationMap": true
   },
   "include": ["src"]
 }

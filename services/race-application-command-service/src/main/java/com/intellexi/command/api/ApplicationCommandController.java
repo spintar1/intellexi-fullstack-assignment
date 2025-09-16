@@ -5,6 +5,8 @@ import com.intellexi.command.events.EventPublisher;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -20,6 +22,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/applications")
 @Validated
 public class ApplicationCommandController {
+    private static final Logger logger = LoggerFactory.getLogger(ApplicationCommandController.class);
 
     public static class ApplicationRequest {
         @NotBlank private String firstName;
@@ -43,12 +46,27 @@ public class ApplicationCommandController {
     @PostMapping
     @PreAuthorize("hasAnyRole('Administrator','Applicant')")
     public ResponseEntity<Map<String, Object>> create(@Valid @RequestBody ApplicationRequest req, Authentication auth) {
-        UUID id = UUID.randomUUID();
         String email = auth == null ? null : String.valueOf(auth.getPrincipal());
-        publisher.publishApplicationEvent(new ApplicationEvents.ApplicationCreated(
-                id, req.getFirstName(), req.getLastName(), req.getClub(), req.getRaceId(), email
-        ));
-        return ResponseEntity.accepted().body(Map.of("id", id));
+        logger.info("Received application creation request - user: {}, firstName: {}, lastName: {}, club: {}, raceId: {}", 
+                    email, req.getFirstName(), req.getLastName(), req.getClub(), req.getRaceId());
+        
+        try {
+            UUID id = UUID.randomUUID();
+            logger.debug("Generated application ID: {}", id);
+            
+            logger.info("Publishing application created event - id: {}, user: {}, raceId: {}", id, email, req.getRaceId());
+            publisher.publishApplicationEvent(new ApplicationEvents.ApplicationCreated(
+                    id, req.getFirstName(), req.getLastName(), req.getClub(), req.getRaceId(), email
+            ));
+            
+            logger.info("Application created successfully - id: {}, user: {}", id, email);
+            return ResponseEntity.accepted().body(Map.of("id", id));
+            
+        } catch (Exception e) {
+            logger.error("Failed to create application for user: {} - firstName: {}, lastName: {}, raceId: {}", 
+                        email, req.getFirstName(), req.getLastName(), req.getRaceId(), e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -57,12 +75,28 @@ public class ApplicationCommandController {
         // Extract ID from the URL path manually
         String path = request.getRequestURI();
         String idString = path.substring(path.lastIndexOf('/') + 1);
-        UUID id = UUID.fromString(idString);
         
-        String email = auth == null ? null : String.valueOf(auth.getPrincipal());
-        String role = auth == null ? null : auth.getAuthorities().stream().findFirst().map(a -> a.getAuthority().replace("ROLE_", "")).orElse(null);
-        publisher.publishApplicationEvent(new ApplicationEvents.ApplicationDeleted(id, email, role));
-        return ResponseEntity.accepted().build();
+        try {
+            UUID id = UUID.fromString(idString);
+            String email = auth == null ? null : String.valueOf(auth.getPrincipal());
+            String role = auth == null ? null : auth.getAuthorities().stream().findFirst().map(a -> a.getAuthority().replace("ROLE_", "")).orElse(null);
+            
+            logger.info("Received application delete request - id: {}, user: {}, role: {}", id, email, role);
+            
+            logger.info("Publishing application deleted event - id: {}, user: {}, role: {}", id, email, role);
+            publisher.publishApplicationEvent(new ApplicationEvents.ApplicationDeleted(id, email, role));
+            
+            logger.info("Application delete request processed successfully - id: {}, user: {}", id, email);
+            return ResponseEntity.accepted().build();
+            
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid UUID format for application deletion: '{}' - path: {}", idString, path, e);
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            logger.error("Failed to process application deletion - id: '{}', user: {}", idString, 
+                        auth != null ? auth.getPrincipal() : "unknown", e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
 

@@ -151,6 +151,123 @@ curl -X POST http://localhost:8081/auth/token \
    - View the `races` and `applications` tables
    - See data synchronized between services
 
+## 🔍 Debugging & Development
+
+### Enhanced Source Maps & Debug Configuration
+
+The application is configured with comprehensive debugging support including source maps, debug logging, and IDE integration.
+
+#### Quick Debug Setup
+
+```bash
+# Start only infrastructure for debugging
+make debug-up
+
+# In separate terminals or IDE:
+# 1. Start Command Service with debugger
+# 2. Start Query Service with debugger  
+# 3. Start React app with source maps
+make client-debug
+```
+
+#### VSCode Debugging
+
+The project includes pre-configured VSCode launch configurations:
+
+1. **Debug Command Service** - Launches with debug port 5005
+2. **Debug Query Service** - Launches with debug port 5006  
+3. **Debug React App** - Launches with source maps enabled
+4. **Attach to Chrome** - For frontend debugging
+
+**Usage:**
+1. Open project in VSCode
+2. Press `F5` or go to Run & Debug panel
+3. Select desired configuration
+4. Set breakpoints and debug
+
+#### Source Maps Configuration
+
+**Frontend:**
+- **Development**: Inline source maps for immediate debugging
+- **Production**: External source maps for security
+- **CSS**: Source maps enabled for style debugging
+
+**Backend:**
+- **Debug information**: Lines, variables, and source included
+- **Parameter names**: Preserved for reflection
+- **Compiler warnings**: All enabled for better code quality
+
+#### Enhanced Logging
+
+Both services configured with debug-level logging:
+
+```yaml
+logging:
+  level:
+    com.intellexi: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.amqp: DEBUG
+    org.hibernate.SQL: DEBUG
+```
+
+**Log Patterns:** Include timestamp, thread, level, class, line number, and message
+
+#### Debug Commands
+
+```bash
+# Build with debug information
+make build-debug
+
+# Start React app with debugging
+make client-debug
+
+# View infrastructure logs only
+make debug-logs
+
+# Full debug environment
+make debug-dev
+```
+
+#### IDE Integration
+
+**IntelliJ IDEA:**
+- Import Maven projects from `services/` directories
+- Debug configurations auto-detected
+- Source maps work out of the box
+
+**VSCode:**
+- Use provided `.vscode/launch.json`
+- Java Extension Pack recommended
+- ES6 modules and TypeScript supported
+
+#### Browser Debugging
+
+**Chrome DevTools:**
+- Source maps automatically loaded
+- Set breakpoints in original TypeScript
+- Network tab shows API calls with full details
+- React DevTools compatible
+
+**Firefox:**
+- Source maps supported
+- Vue.js devtools compatible
+- Network monitoring included
+
+#### Remote Debugging
+
+**Java Services:**
+- Command Service: `localhost:5005`
+- Query Service: `localhost:5006`
+- Use IDE remote debug configuration
+
+**Example IntelliJ Remote Debug:**
+```
+Host: localhost
+Port: 5005 (or 5006)
+Debugger mode: Attach to remote JVM
+Transport: Socket
+```
+
 ## 🐛 Troubleshooting
 
 ### Services Not Starting

@@ -20,6 +20,20 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:guest}
     password: ${RABBITMQ_PASSWORD:guest}
+
+# Enhanced logging for debugging
+logging:
+  level:
+    com.intellexi: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: INFO
+    org.springframework.amqp: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{36}:%line] - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{36}:%line] - %msg%n"
+
 app:
   rabbit:
     exchange: events.exchange
@@ -29,11 +43,12 @@ app:
     queues:
       races: query.races
       applications: query.applications
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,loggers,metrics
 
 
 
