@@ -53,11 +53,11 @@ public class ApplicationCommandController {
             ));
             
             logger.info("Application created successfully - id: {}, user: {}", id, email);
-            return ResponseEntity.accepted().body(Map.of("id", id));
+            return ResponseEntity.accepted().body(Map.of("id", id, "message", "Application submitted successfully. Note: you can only register once per race."));
             
         } catch (Exception e) {
             logger.error("Failed to create application for user: {} - raceId: {}", email, req.getRaceId(), e);
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to submit application. You might already be registered for this race."));
         }
     }
 

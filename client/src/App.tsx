@@ -31,6 +31,7 @@ export default function App() {
       localStorage.setItem('token', token);
     } else {
       localStorage.removeItem('token');
+      localStorage.removeItem('userEmail');
     }
   }, [token]);
 
@@ -186,12 +187,14 @@ function Login({ onToken }: { onToken: (t: string) => void }) {
     setLoading(true);
     setError(null);
     
-    try {
-      const token = await submitWithRetry();
-      if (token) {
-        onToken(token);
-      }
-    } catch (err) {
+        try {
+          const token = await submitWithRetry();
+          if (token) {
+            // Store the user's email for later use
+            localStorage.setItem('userEmail', email);
+            onToken(token);
+          }
+        } catch (err) {
       // Convert technical errors to user-friendly messages
       let userMessage = 'Login failed';
       

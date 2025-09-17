@@ -68,11 +68,11 @@ public class RaceCommandController {
             publisher.publishRaceEvent(new RaceEvents.RaceCreated(id, req.getName(), req.getDistance()));
             
             logger.info("Race created successfully - id: {}, name: '{}'", id, req.getName());
-            return ResponseEntity.created(URI.create("/api/v1/races/" + id)).body(Map.of("id", id));
+            return ResponseEntity.created(URI.create("/api/v1/races/" + id)).body(Map.of("id", id, "message", "Race created successfully. Note: duplicate races with the same name and distance are not allowed."));
             
         } catch (Exception e) {
             logger.error("Failed to create race - name: '{}', distance: '{}'", req.getName(), req.getDistance(), e);
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to create race. This might be due to a duplicate race with the same name and distance."));
         }
     }
 

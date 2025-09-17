@@ -43,9 +43,18 @@ public class EventListeners {
                 String distance = payload.get("distance").toString();
                 
                 logger.info("Processing race created event - id: {}, name: '{}', distance: '{}'", raceId, name, distance);
-                Race race = new Race(raceId, name, distance);
-                raceRepository.save(race);
-                logger.info("Successfully created race - id: {}, name: '{}'", raceId, name);
+                try {
+                    Race race = new Race(raceId, name, distance);
+                    raceRepository.save(race);
+                    logger.info("Successfully created race - id: {}, name: '{}'", raceId, name);
+                } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                    if (e.getMessage().contains("uk_races_name_distance")) {
+                        logger.error("Cannot create race - duplicate race exists with name '{}' and distance '{}'", name, distance);
+                    } else {
+                        logger.error("Database constraint violation when creating race - id: {}, name: '{}', distance: '{}'", raceId, name, distance, e);
+                    }
+                    throw e;
+                }
                 
             } else if (payload.get("id") != null && (payload.get("name") != null || payload.get("distance") != null)) {
                 // RaceUpdated (partial)
@@ -60,10 +69,18 @@ public class EventListeners {
                     
                     if (newName != null) existing.setName(newName);
                     if (newDistance != null) existing.setDistance(newDistance);
-                    raceRepository.save(existing);
-                    
-                    logger.info("Successfully updated race - id: {}, name: '{}' -> '{}', distance: '{}' -> '{}'", 
-                               id, oldName, existing.getName(), oldDistance, existing.getDistance());
+                    try {
+                        raceRepository.save(existing);
+                        logger.info("Successfully updated race - id: {}, name: '{}' -> '{}', distance: '{}' -> '{}'", 
+                                   id, oldName, existing.getName(), oldDistance, existing.getDistance());
+                    } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                        if (e.getMessage().contains("uk_races_name_distance")) {
+                            logger.error("Cannot update race - another race exists with name '{}' and distance '{}'", existing.getName(), existing.getDistance());
+                        } else {
+                            logger.error("Database constraint violation when updating race - id: {}", id, e);
+                        }
+                        throw e;
+                    }
                 }, () -> {
                     logger.warn("Race not found for update - id: {}", id);
                 });
@@ -111,10 +128,18 @@ public class EventListeners {
                 logger.info("Processing application created event - id: {}, email: {}, userId: {}, raceId: {}", 
                            applicationId, applicantEmail, userId, raceId);
                 
-                Application a = new Application(applicationId, raceId, userId);
-                applicationRepository.save(a);
-                
-                logger.info("Successfully created application - id: {}, email: {}", applicationId, applicantEmail);
+                try {
+                    Application a = new Application(applicationId, raceId, userId);
+                    applicationRepository.save(a);
+                    logger.info("Successfully created application - id: {}, email: {}", applicationId, applicantEmail);
+                } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                    if (e.getMessage().contains("uk_applications_user_race")) {
+                        logger.error("Cannot create application - user '{}' is already registered for race '{}'", applicantEmail, raceId);
+                    } else {
+                        logger.error("Database constraint violation when creating application - id: {}, email: {}, raceId: {}", applicationId, applicantEmail, raceId, e);
+                    }
+                    throw e;
+                }
                 
             } else if (payload.get("id") != null && payload.size() >= 1 && payload.get("raceId") == null) {
                 // ApplicationDeleted — enforce that either admin initiated, or applicant deleting own app

@@ -43,6 +43,7 @@ export default function Races({
     setSubmitError(null);
 
     try {
+      // Submit the application
       const response = await fetch(`${apiCommand}/api/v1/applications`, {
         method: 'POST',
         headers: {
@@ -55,16 +56,60 @@ export default function Races({
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Failed to submit application');
+        let errorMessage = 'Failed to submit application';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          errorMessage = await response.text() || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
-      // Success! Go back to race list
+      const result = await response.json();
+      const applicationId = result.id;
+      
+      // Wait a moment for the event to be processed, then verify the application was created
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Check if the application was actually created
+      const verifyResponse = await fetch(`${apiQuery}/api/v1/applications`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (verifyResponse.ok) {
+        const applications = await verifyResponse.json();
+        const applicationExists = applications.some((app: any) => 
+          app.id === applicationId || 
+          (app.raceId === selectedRaceId && app.applicantEmail === localStorage.getItem('userEmail'))
+        );
+        
+        if (!applicationExists) {
+          throw new Error('Registration failed. You may already be registered for this race, or there was a system error.');
+        }
+      }
+
+      // Success! Show success message and go back to race list
+      alert('✅ Successfully registered for the race!');
       goBack();
       
     } catch (error) {
       console.error('Application submission failed:', error);
-      setSubmitError(error instanceof Error ? error.message : 'Failed to submit application');
+      let userFriendlyMessage = 'Failed to submit application';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('already registered') || error.message.includes('already be registered')) {
+          userFriendlyMessage = '⚠️ You are already registered for this race. Each participant can only register once per race.';
+        } else if (error.message.includes('constraint') || error.message.includes('duplicate')) {
+          userFriendlyMessage = '⚠️ Registration failed - you are already registered for this race.';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          userFriendlyMessage = '🌐 Network error. Please check your connection and try again.';
+        } else {
+          userFriendlyMessage = error.message;
+        }
+      }
+      
+      setSubmitError(userFriendlyMessage);
     } finally {
       setSubmitting(false);
     }
