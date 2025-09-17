@@ -127,15 +127,23 @@ function Login({ onToken }: { onToken: (t: string) => void }) {
           body: JSON.stringify({ email, role })
         });
         
+        // Get the raw response text once
+        const responseText = await response.text();
+        
         if (!response.ok) {
-          // Parse error response for better messaging
+          // Try to parse as JSON to get structured error
           try {
-            const errorData = await response.json();
+            const errorData = JSON.parse(responseText);
             if (errorData.error) {
               throw new Error(errorData.error);
             }
           } catch (parseError) {
-            // If we can't parse the error, use status-based messages
+            // If JSON parsing fails, use the raw response text
+            if (responseText && responseText.trim()) {
+              throw new Error(responseText);
+            }
+            
+            // If no response text, use status-based fallbacks
             if (response.status === 401) {
               throw new Error('Invalid credentials - user not found');
             } else if (response.status === 403) {
@@ -147,8 +155,8 @@ function Login({ onToken }: { onToken: (t: string) => void }) {
           throw new Error('Login failed - please check your credentials');
         }
         
-        // Parse JSON response to get the actual token
-        const tokenResponse = await response.json();
+        // Parse the success response JSON
+        const tokenResponse = JSON.parse(responseText);
         console.log('Token response from server:', tokenResponse);
         
         // Extract the token from the JSON response
@@ -199,10 +207,10 @@ function Login({ onToken }: { onToken: (t: string) => void }) {
       let userMessage = 'Login failed';
       
       if (err instanceof Error) {
-        if (err.message.includes('user not found')) {
-          userMessage = 'Account not found. Please contact an administrator to create your account.';
-        } else if (err.message.includes('Invalid role for user')) {
+        if (err.message.includes('Invalid role for user')) {
           userMessage = 'Incorrect role selected. Please choose the correct role for your account.';
+        } else if (err.message.includes('user not found')) {
+          userMessage = 'Account not found. Please contact an administrator to create your account.';
         } else if (err.message.includes('fetch') || err.message.includes('NetworkError') || err.message.includes('ERR_CONNECTION_REFUSED')) {
           userMessage = 'Unable to connect to the server. Please wait a moment and try again.';
         } else if (err.message.includes('Server error')) {
