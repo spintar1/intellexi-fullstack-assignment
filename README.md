@@ -155,17 +155,38 @@ curl -X POST http://localhost:8081/auth/token \
 
 1. **Login as Administrator**
    - Create a race: "Spring Trail Run", Distance: "10k"
+   - Try creating a duplicate race to test constraints
 
 2. **Login as Applicant**
    - View available races
    - Apply to a race with your details
+   - Try registering for the same race twice (see user-friendly error)
    - View your applications
    - Delete an application if needed
 
 3. **Check Database**
    - Open pgAdmin
-   - View the `races` and `applications` tables
+   - View the `races`, `applications`, and `users` tables
    - See data synchronized between services
+
+## 🛡️ Data Integrity & Business Rules
+
+The application enforces critical business rules at the database level:
+
+### Database Constraints
+- **Unique User Emails**: Prevents duplicate user accounts
+- **Unique Race Names + Distance**: No duplicate races (e.g., two "Boston Marathon" 42.2km races)  
+- **One Registration Per Race**: Users can only register once per race
+
+### User-Friendly Error Handling
+- **Smart Validation**: Frontend verifies registration success after submission
+- **Clear Messages**: Instead of technical errors, users see helpful feedback
+- **Maintains CQRS**: Command service stays stateless while providing great UX
+
+### Example Error Messages
+- ⚠️ "You are already registered for this race. Each participant can only register once per race."
+- 🌐 "Network error. Please check your connection and try again."
+- ✅ "Successfully registered for the race!"
 
 ## 🔍 Debugging & Development
 
@@ -339,7 +360,9 @@ docker compose logs race_application_query_service
 ✅ **Event-Driven Communication** via RabbitMQ  
 ✅ **JWT Authentication** with role-based access  
 ✅ **React Frontend** with role-based UI  
-✅ **PostgreSQL Databases** with proper schema  
+✅ **PostgreSQL Database** with proper schema  
+✅ **Database Constraints** preventing duplicates and enforcing business rules  
+✅ **User-Friendly Error Messages** with smart frontend validation  
 ✅ **Docker Compose** development environment  
 ✅ **CORS Configuration** for cross-origin requests  
 ✅ **Database Migrations** (Flyway)  
