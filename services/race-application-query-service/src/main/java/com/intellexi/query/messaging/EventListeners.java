@@ -2,8 +2,10 @@ package com.intellexi.query.messaging;
 
 import com.intellexi.query.model.Application;
 import com.intellexi.query.model.Race;
+import com.intellexi.query.model.User;
 import com.intellexi.query.repo.ApplicationRepository;
 import com.intellexi.query.repo.RaceRepository;
+import com.intellexi.query.repo.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -11,6 +13,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -18,10 +21,12 @@ public class EventListeners {
     private static final Logger logger = LoggerFactory.getLogger(EventListeners.class);
     private final RaceRepository raceRepository;
     private final ApplicationRepository applicationRepository;
+    private final UserRepository userRepository;
 
-    public EventListeners(RaceRepository raceRepository, ApplicationRepository applicationRepository) {
+    public EventListeners(RaceRepository raceRepository, ApplicationRepository applicationRepository, UserRepository userRepository) {
         this.raceRepository = raceRepository;
         this.applicationRepository = applicationRepository;
+        this.userRepository = userRepository;
     }
 
     @RabbitListener(queues = "${app.rabbit.queues.races}")
@@ -85,25 +90,33 @@ public class EventListeners {
         logger.debug("Full application event payload: {}", payload);
         
         try {
-            if (payload.get("firstName") != null) {
+            if (payload.get("raceId") != null && payload.get("applicantEmail") != null) {
                 // ApplicationCreated
                 UUID applicationId = UUID.fromString(payload.get("id").toString());
-                String firstName = payload.get("firstName").toString();
-                String lastName = payload.get("lastName").toString();
-                String club = (String) payload.get("club");
                 UUID raceId = UUID.fromString(payload.get("raceId").toString());
                 String applicantEmail = (String) payload.get("applicantEmail");
                 
-                logger.info("Processing application created event - id: {}, applicant: {} {}, email: {}, raceId: {}, club: '{}'", 
-                           applicationId, firstName, lastName, applicantEmail, raceId, club);
+                // Look up user by email to get userId
+                UUID userId = null;
+                if (applicantEmail != null) {
+                    Optional<User> userOpt = userRepository.findByEmail(applicantEmail);
+                    if (userOpt.isPresent()) {
+                        userId = userOpt.get().getId();
+                        logger.debug("Found user ID {} for email: {}", userId, applicantEmail);
+                    } else {
+                        logger.warn("User not found for email: {} - application will be created without user reference", applicantEmail);
+                    }
+                }
                 
-                Application a = new Application(applicationId, firstName, lastName, club, raceId, applicantEmail);
+                logger.info("Processing application created event - id: {}, email: {}, userId: {}, raceId: {}", 
+                           applicationId, applicantEmail, userId, raceId);
+                
+                Application a = new Application(applicationId, raceId, userId);
                 applicationRepository.save(a);
                 
-                logger.info("Successfully created application - id: {}, applicant: {} {}, email: {}", 
-                           applicationId, firstName, lastName, applicantEmail);
+                logger.info("Successfully created application - id: {}, email: {}", applicationId, applicantEmail);
                 
-            } else if (payload.get("id") != null && payload.size() >= 1 && payload.get("firstName") == null) {
+            } else if (payload.get("id") != null && payload.size() >= 1 && payload.get("raceId") == null) {
                 // ApplicationDeleted — enforce that either admin initiated, or applicant deleting own app
                 UUID id = UUID.fromString(payload.get("id").toString());
                 String initiatorRole = (String) payload.getOrDefault("initiatorRole", "Applicant");
@@ -120,14 +133,19 @@ public class EventListeners {
                 } else if (initiatorEmail != null) {
                     // Applicants can only delete their own applications
                     applicationRepository.findById(id).ifPresentOrElse(existing -> {
-                        if (initiatorEmail.equals(existing.getApplicantEmail())) {
-                            logger.info("Applicant delete - removing application {} for user {}", id, initiatorEmail);
-                            applicationRepository.deleteById(id);
-                            logger.info("Successfully deleted application by applicant - id: {}, user: {}", id, initiatorEmail);
-                        } else {
-                            logger.warn("Applicant {} tried to delete application {} owned by {}", 
-                                      initiatorEmail, id, existing.getApplicantEmail());
-                        }
+                        // Look up user by email to check ownership
+                        userRepository.findByEmail(initiatorEmail).ifPresentOrElse(user -> {
+                            if (user.getId().equals(existing.getUserId())) {
+                                logger.info("Applicant delete - removing application {} for user {}", id, initiatorEmail);
+                                applicationRepository.deleteById(id);
+                                logger.info("Successfully deleted application by applicant - id: {}, user: {}", id, initiatorEmail);
+                            } else {
+                                logger.warn("Applicant {} tried to delete application {} owned by different user", 
+                                          initiatorEmail, id);
+                            }
+                        }, () -> {
+                            logger.warn("User not found for deletion check - email: {}", initiatorEmail);
+                        });
                     }, () -> {
                         logger.warn("Application not found for deletion - id: {}, requestedBy: {}", id, initiatorEmail);
                     });

@@ -1,5 +1,7 @@
-package com.intellexi.command.api;
+package com.intellexi.query.api;
 
+import com.intellexi.query.model.User;
+import com.intellexi.query.repo.UserRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -25,6 +27,12 @@ import java.util.Optional;
 @Validated
 public class AuthController {
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+    private final UserRepository userRepository;
+    
+    public AuthController(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+    
     public static class TokenRequest {
         @NotBlank private String email;
         @NotBlank private String role;
@@ -40,6 +48,23 @@ public class AuthController {
 		logger.info("Received token request for user: {} with role: {}", req.getEmail(), req.getRole());
 		
 		try {
+			// Validate user exists in database
+			Optional<User> userOpt = userRepository.findByEmail(req.getEmail());
+			if (userOpt.isEmpty()) {
+				logger.warn("Authentication failed - user not found: {}", req.getEmail());
+				return ResponseEntity.status(401).body(Map.of("error", "Invalid credentials - user not found"));
+			}
+			
+			User user = userOpt.get();
+			
+			// Validate role matches what's in database
+			if (!user.getRole().name().equals(req.getRole())) {
+				logger.warn("Authentication failed - role mismatch for user: {} (requested: {}, actual: {})", 
+						   req.getEmail(), req.getRole(), user.getRole());
+				return ResponseEntity.status(401).body(Map.of("error", "Invalid role for user"));
+			}
+			
+			logger.info("User authenticated successfully: {} with role: {}", req.getEmail(), user.getRole());
 			String secret = Optional.ofNullable(System.getenv("JWT_SECRET")).orElse("dev-shared-secret-please-change-this-is-a-very-long-secret-key-for-jwt-signing-that-is-at-least-256-bits-long");
 			Key key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
 			
@@ -63,4 +88,4 @@ public class AuthController {
 			return ResponseEntity.internalServerError().build();
 		}
 	}
-} 
+}

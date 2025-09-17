@@ -19,7 +19,7 @@ public class SecurityConfig {
         http.cors(cors -> {});
         http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         http.authorizeHttpRequests(auth -> auth
-            .requestMatchers("/actuator/health").permitAll()
+            .requestMatchers("/actuator/health", "/auth/token").permitAll()
             .anyRequest().authenticated()
         );
         return http.build();

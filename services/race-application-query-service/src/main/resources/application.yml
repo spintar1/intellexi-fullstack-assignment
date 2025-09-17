@@ -9,12 +9,14 @@ spring:
     password: ${DB_PASSWORD:query}
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: validate  # Changed to validate - let Flyway handle table creation
     properties:
       hibernate:
         jdbc.lob.non_contextual_creation: true
   flyway:
-    enabled: false
+    enabled: true  # Enable Flyway to run SQL migrations
+    locations: classpath:db/migration
+    baseline-on-migrate: true
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}

@@ -117,34 +117,99 @@ function Login({ onToken }: { onToken: (t: string) => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const submitWithRetry = async (retryCount = 3, delay = 1000) => {
+    for (let i = 0; i < retryCount; i++) {
+      try {
+        const response = await fetch(`${API_QUERY}/auth/token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, role })
+        });
+        
+        if (!response.ok) {
+          // Parse error response for better messaging
+          try {
+            const errorData = await response.json();
+            if (errorData.error) {
+              throw new Error(errorData.error);
+            }
+          } catch (parseError) {
+            // If we can't parse the error, use status-based messages
+            if (response.status === 401) {
+              throw new Error('Invalid credentials - user not found');
+            } else if (response.status === 403) {
+              throw new Error('Access forbidden - please check your role');
+            } else if (response.status >= 500) {
+              throw new Error('Server error - please try again later');
+            }
+          }
+          throw new Error('Login failed - please check your credentials');
+        }
+        
+        // Parse JSON response to get the actual token
+        const tokenResponse = await response.json();
+        console.log('Token response from server:', tokenResponse);
+        
+        // Extract the token from the JSON response
+        const actualToken = tokenResponse.token || tokenResponse;
+        console.log('Extracted token:', actualToken);
+        
+        if (!actualToken || typeof actualToken !== 'string' || actualToken.length < 10) {
+          throw new Error('Invalid token received from server');
+        }
+        
+        return actualToken; // Success!
+        
+      } catch (err) {
+        console.log(`Authentication attempt ${i + 1} failed:`, err);
+        
+        // If it's a network/connection error and we have retries left, wait and retry
+        if ((err instanceof Error && 
+            (err.message.includes('fetch') || 
+             err.message.includes('NetworkError') || 
+             err.message.includes('ERR_CONNECTION_REFUSED'))) && 
+            i < retryCount - 1) {
+          console.log(`Retrying in ${delay}ms... (${i + 1}/${retryCount})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 1.5; // Exponential backoff
+          continue;
+        }
+        
+        // If it's not a network error, or we're out of retries, throw the error
+        throw err;
+      }
+    }
+    throw new Error('Authentication failed after all retries');
+  };
+
   const submit = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const response = await fetch(`${API_COMMAND}/auth/token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, role })
-      });
+      const token = await submitWithRetry();
+      if (token) {
+        onToken(token);
+      }
+    } catch (err) {
+      // Convert technical errors to user-friendly messages
+      let userMessage = 'Login failed';
       
-      if (!response.ok) throw new Error('Login failed');
-      
-      // Parse JSON response to get the actual token
-      const tokenResponse = await response.json();
-      console.log('Token response from server:', tokenResponse);
-      
-      // Extract the token from the JSON response
-      const actualToken = tokenResponse.token || tokenResponse;
-      console.log('Extracted token:', actualToken);
-      
-      if (!actualToken || typeof actualToken !== 'string' || actualToken.length < 10) {
-        throw new Error('Invalid token received from server');
+      if (err instanceof Error) {
+        if (err.message.includes('user not found')) {
+          userMessage = 'Account not found. Please contact an administrator to create your account.';
+        } else if (err.message.includes('Invalid role for user')) {
+          userMessage = 'Incorrect role selected. Please choose the correct role for your account.';
+        } else if (err.message.includes('fetch') || err.message.includes('NetworkError') || err.message.includes('ERR_CONNECTION_REFUSED')) {
+          userMessage = 'Unable to connect to the server. Please wait a moment and try again.';
+        } else if (err.message.includes('Server error')) {
+          userMessage = 'Server is temporarily unavailable. Please try again in a moment.';
+        } else {
+          userMessage = err.message;
+        }
       }
       
-      onToken(actualToken);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(userMessage);
     } finally {
       setLoading(false);
     }
@@ -176,7 +241,24 @@ function Login({ onToken }: { onToken: (t: string) => void }) {
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
       </div>
-      {error && <div className="login-error">{error}</div>}
+      {error && (
+        <div className="login-error-container">
+          <div className="login-error">
+            <span className="error-icon">⚠️</span>
+            <div className="error-content">
+              <div className="error-title">Sign In Failed</div>
+              <div className="error-message">{error}</div>
+            </div>
+            <button 
+              className="error-close-button" 
+              onClick={() => setError(null)}
+              aria-label="Close error message"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

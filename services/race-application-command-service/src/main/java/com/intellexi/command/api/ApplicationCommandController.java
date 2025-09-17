@@ -25,15 +25,9 @@ public class ApplicationCommandController {
     private static final Logger logger = LoggerFactory.getLogger(ApplicationCommandController.class);
 
     public static class ApplicationRequest {
-        @NotBlank private String firstName;
-        @NotBlank private String lastName;
-        private String club;
         @NotNull private UUID raceId;
         public ApplicationRequest() {}
-        public ApplicationRequest(String firstName, String lastName, String club, UUID raceId) { this.firstName=firstName; this.lastName=lastName; this.club=club; this.raceId=raceId; }
-        public String getFirstName() { return firstName; }
-        public String getLastName() { return lastName; }
-        public String getClub() { return club; }
+        public ApplicationRequest(UUID raceId) { this.raceId=raceId; }
         public UUID getRaceId() { return raceId; }
     }
 
@@ -47,8 +41,7 @@ public class ApplicationCommandController {
     @PreAuthorize("hasAnyRole('Administrator','Applicant')")
     public ResponseEntity<Map<String, Object>> create(@Valid @RequestBody ApplicationRequest req, Authentication auth) {
         String email = auth == null ? null : String.valueOf(auth.getPrincipal());
-        logger.info("Received application creation request - user: {}, firstName: {}, lastName: {}, club: {}, raceId: {}", 
-                    email, req.getFirstName(), req.getLastName(), req.getClub(), req.getRaceId());
+        logger.info("Received application creation request - user: {}, raceId: {}", email, req.getRaceId());
         
         try {
             UUID id = UUID.randomUUID();
@@ -56,15 +49,14 @@ public class ApplicationCommandController {
             
             logger.info("Publishing application created event - id: {}, user: {}, raceId: {}", id, email, req.getRaceId());
             publisher.publishApplicationEvent(new ApplicationEvents.ApplicationCreated(
-                    id, req.getFirstName(), req.getLastName(), req.getClub(), req.getRaceId(), email
+                    id, req.getRaceId(), email
             ));
             
             logger.info("Application created successfully - id: {}, user: {}", id, email);
             return ResponseEntity.accepted().body(Map.of("id", id));
             
         } catch (Exception e) {
-            logger.error("Failed to create application for user: {} - firstName: {}, lastName: {}, raceId: {}", 
-                        email, req.getFirstName(), req.getLastName(), req.getRaceId(), e);
+            logger.error("Failed to create application for user: {} - raceId: {}", email, req.getRaceId(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

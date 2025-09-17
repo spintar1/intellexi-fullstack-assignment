@@ -10,6 +10,11 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   postgres_query:
     image: postgres:16
@@ -22,6 +27,11 @@ services:
       - "5434:5432"
     volumes:
       - query_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U query -d query_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   race_application_command_service:
     build:
@@ -33,7 +43,6 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_USERNAME=guest
       - RABBITMQ_PASSWORD=guest
-      - JWT_SECRET=dev-shared-secret-please-change-this-is-a-very-long-secret-key-for-jwt-signing-that-is-at-least-256-bits-long
     depends_on:
       - rabbitmq
     ports:
@@ -56,10 +65,18 @@ services:
       - DB_PASSWORD=query
       - JWT_SECRET=dev-shared-secret-please-change-this-is-a-very-long-secret-key-for-jwt-signing-that-is-at-least-256-bits-long
     depends_on:
-      - rabbitmq
-      - postgres_query
+      postgres_query:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "8082:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   client:
     build:
@@ -69,8 +86,10 @@ services:
       - VITE_API_QUERY_URL=http://localhost:8082
       - VITE_API_COMMAND_URL=http://localhost:8081
     depends_on:
-      - race_application_query_service
-      - race_application_command_service
+      race_application_query_service:
+        condition: service_healthy
+      race_application_command_service:
+        condition: service_started
     ports:
       - "5173:80"
 

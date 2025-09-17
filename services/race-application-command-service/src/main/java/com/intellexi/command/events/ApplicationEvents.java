@@ -4,15 +4,12 @@ import java.util.UUID;
 
 public class ApplicationEvents {
     public static class ApplicationCreated {
-        private UUID id; private String firstName; private String lastName; private String club; private UUID raceId; private String applicantEmail;
+        private UUID id; private UUID raceId; private String applicantEmail;
         public ApplicationCreated() {}
-        public ApplicationCreated(UUID id, String firstName, String lastName, String club, UUID raceId, String applicantEmail) {
-            this.id=id; this.firstName=firstName; this.lastName=lastName; this.club=club; this.raceId=raceId; this.applicantEmail=applicantEmail;
+        public ApplicationCreated(UUID id, UUID raceId, String applicantEmail) {
+            this.id=id; this.raceId=raceId; this.applicantEmail=applicantEmail;
         }
         public UUID getId() { return id; }
-        public String getFirstName() { return firstName; }
-        public String getLastName() { return lastName; }
-        public String getClub() { return club; }
         public UUID getRaceId() { return raceId; }
         public String getApplicantEmail() { return applicantEmail; }
     }

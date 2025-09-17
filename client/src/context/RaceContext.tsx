@@ -28,15 +28,45 @@ export function RaceProvider({ children, apiQuery, token }: { children: ReactNod
     
     setLoading(true);
     setError(null);
+    
+    const refreshRacesWithRetry = async (retryCount = 3, delay = 1000) => {
+      for (let i = 0; i < retryCount; i++) {
+        try {
+          console.log(`Making race request attempt ${i + 1} with token:`, token);
+          const res = await fetch(`${apiQuery}/api/v1/races`, { 
+            headers: { Authorization: `Bearer ${token}` } 
+          });
+          if (!res.ok) throw new Error(`${res.status}`);
+          const fetchedRaces = await res.json();
+          return fetchedRaces.sort((a: Race, b: Race) => a.name.localeCompare(b.name));
+        } catch (e) {
+          console.log(`Race loading attempt ${i + 1} failed:`, e);
+          
+          // If it's a network error and we have retries left, wait and retry
+          if ((e instanceof Error && 
+              (e.message.includes('fetch') || 
+               e.message.includes('NetworkError') ||
+               e.message.includes('ERR_CONNECTION_REFUSED'))) && 
+              i < retryCount - 1) {
+            console.log(`Retrying race loading in ${delay}ms... (${i + 1}/${retryCount})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 1.5; // Exponential backoff
+            continue;
+          }
+          
+          // If not a network error or out of retries, throw
+          throw e;
+        }
+      }
+      throw new Error('Race loading failed after all retries');
+    };
+
     try {
-      const res = await fetch(`${apiQuery}/api/v1/races`, { 
-        headers: { Authorization: `Bearer ${token}` } 
-      });
-      if (!res.ok) throw new Error(`${res.status}`);
-      const fetchedRaces = await res.json();
-      setRaces(fetchedRaces.sort((a: Race, b: Race) => a.name.localeCompare(b.name)));
+      const fetchedRaces = await refreshRacesWithRetry();
+      setRaces(fetchedRaces);
     } catch (e) { 
-      setError('Failed to load races'); 
+      console.error('Failed to load races after retries:', e);
+      setError('Failed to load races. Please refresh the page to try again.'); 
     } finally { 
       setLoading(false); 
     }

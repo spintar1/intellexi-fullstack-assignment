@@ -3,6 +3,11 @@ package com.intellexi.query.model;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.FetchType;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.UUID;
 
@@ -11,28 +16,37 @@ import java.util.UUID;
 public class Application {
     @Id
     private UUID id;
-    private String firstName;
-    private String lastName;
-    private String club;
+    
+    @Column(name = "race_id", nullable = false)
     private UUID raceId;
-    private String applicantEmail;
+    
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    @JsonIgnore
+    private User user;
 
     public Application() {}
-    public Application(UUID id, String firstName, String lastName, String club, UUID raceId, String applicantEmail) {
-        this.id = id; this.firstName = firstName; this.lastName = lastName; this.club = club; this.raceId = raceId; this.applicantEmail = applicantEmail;
+    
+    public Application(UUID id, UUID raceId, UUID userId) {
+        this.id = id; 
+        this.raceId = raceId;
+        this.userId = userId;
     }
+    // Getters and setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
-    public String getFirstName() { return firstName; }
-    public void setFirstName(String firstName) { this.firstName = firstName; }
-    public String getLastName() { return lastName; }
-    public void setLastName(String lastName) { this.lastName = lastName; }
-    public String getClub() { return club; }
-    public void setClub(String club) { this.club = club; }
+    
     public UUID getRaceId() { return raceId; }
     public void setRaceId(UUID raceId) { this.raceId = raceId; }
-    public String getApplicantEmail() { return applicantEmail; }
-    public void setApplicantEmail(String applicantEmail) { this.applicantEmail = applicantEmail; }
+    
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
+    
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 }
 
 

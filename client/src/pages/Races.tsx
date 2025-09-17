@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRaces } from '../context/RaceContext';
 
 type Race = { id: string; name: string; distance: string };
-type FormData = { firstName: string; lastName: string; club: string };
+type FormData = {};
 
 export default function Races({ 
   apiQuery, 
@@ -15,14 +15,14 @@ export default function Races({
 }) {
   const { races, loading, error } = useRaces();
   const [selectedRaceId, setSelectedRaceId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormData>({ firstName: '', lastName: '', club: '' });
+  const [formData, setFormData] = useState<FormData>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const selectedRace = races.find(r => r.id === selectedRaceId);
 
   const resetForm = () => {
-    setFormData({ firstName: '', lastName: '', club: '' });
+    setFormData({});
     setSubmitError(null);
   };
 
@@ -37,7 +37,7 @@ export default function Races({
   };
 
   const submitApplication = async () => {
-    if (!selectedRaceId || !formData.firstName.trim() || !formData.lastName.trim()) return;
+    if (!selectedRaceId) return;
 
     setSubmitting(true);
     setSubmitError(null);
@@ -50,9 +50,6 @@ export default function Races({
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-          club: formData.club.trim() || null,
           raceId: selectedRaceId
         })
       });
@@ -170,53 +167,26 @@ export default function Races({
               </div>
 
               <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">First Name *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="Enter first name"
-                    autoComplete="off"
-                    data-lpignore="true"
-                    value={formData.firstName}
-                    onChange={e => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Last Name *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="Enter last name"
-                    autoComplete="off"
-                    data-lpignore="true"
-                    value={formData.lastName}
-                    onChange={e => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                  />
-                </div>
-                
-                <div className="form-group full-width">
-                  <label className="form-label">Club (Optional)</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="Enter your running club"
-                    autoComplete="off"
-                    data-lpignore="true"
-                    value={formData.club}
-                    onChange={e => setFormData(prev => ({ ...prev, club: e.target.value }))}
-                  />
+                <div className="form-group full-width" style={{
+                  padding: 'var(--space-4)',
+                  background: 'rgba(99, 102, 241, 0.08)',
+                  border: '1px solid rgba(99, 102, 241, 0.15)',
+                  borderRadius: 'var(--radius-lg)',
+                  textAlign: 'center'
+                }}>
+                  <p style={{
+                    margin: 0,
+                    color: 'var(--gray-700)',
+                    fontSize: '0.95rem'
+                  }}>
+                    Your profile information will be used for race registration.
+                  </p>
                 </div>
               </div>
 
               <button
                 className="btn register-button"
-                disabled={
-                  submitting || 
-                  !formData.firstName.trim() || 
-                  !formData.lastName.trim()
-                }
+                disabled={submitting}
                 onClick={submitApplication}
               >
                 {submitting ? (
