@@ -1,0 +1,44 @@
+spring:
+  profiles:
+    active: test
+  
+  # Database Configuration for testing (H2 in-memory)
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    database-platform: org.hibernate.dialect.H2Dialect
+    defer-datasource-initialization: true
+    
+  # Disable Flyway for tests (we use ddl-auto instead)
+  flyway:
+    enabled: false
+    
+  # RabbitMQ Configuration for testing  
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    exchange:
+      race: "race.events.test"
+      application: "application.events.test"
+
+# Security Configuration for testing
+jwt:
+  secret: "test-secret-key-that-is-long-enough-for-jwt-signing-in-tests-at-least-256-bits"
+
+# Logging Configuration
+logging:
+  level:
+    com.intellexi: DEBUG
+    org.springframework.amqp: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type: TRACE

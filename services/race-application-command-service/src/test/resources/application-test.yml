@@ -1,0 +1,24 @@
+spring:
+  profiles:
+    active: test
+  
+  # RabbitMQ Configuration for testing
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    exchange:
+      race: "race.events.test"
+      application: "application.events.test"
+
+# Security Configuration for testing
+jwt:
+  secret: "test-secret-key-that-is-long-enough-for-jwt-signing-in-tests-at-least-256-bits"
+
+# Logging Configuration
+logging:
+  level:
+    com.intellexi: DEBUG
+    org.springframework.amqp: INFO
+    org.springframework.security: INFO

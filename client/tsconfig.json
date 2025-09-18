@@ -11,6 +11,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     // Enable source maps for better debugging
     "sourceMap": true,
     "inlineSourceMap": false,
@@ -19,7 +21,8 @@
     "declaration": true,
     "declarationMap": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "types": ["jest", "@testing-library/jest-dom"]
 }
 
 

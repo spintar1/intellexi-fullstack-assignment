@@ -9,8 +9,7 @@ import './styles/modern-race.css';
 
 type Decoded = { sub: string; role: 'Applicant'|'Administrator'; exp: number };
 
-const API_QUERY = (import.meta as any).env?.VITE_API_QUERY_URL ?? 'http://localhost:8082';
-const API_COMMAND = (import.meta as any).env?.VITE_API_COMMAND_URL ?? 'http://localhost:8081';
+import { API_QUERY, API_COMMAND } from './config/api';
 
 export default function App() {
   const navigate = useNavigate();
@@ -22,7 +21,7 @@ export default function App() {
   });
   const user = useMemo<Decoded | null>(() => {
     if (!token) return null;
-    try { return jwtDecode(token); } catch { return null; }
+    try { return jwtDecode(token) as Decoded; } catch { return null; }
   }, [token]);
 
   useEffect(() => {
